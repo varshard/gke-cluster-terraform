@@ -10,7 +10,7 @@ variable "region" {
 
 terraform {
   backend "gcs" {
-    bucket = "gke-from-scratch-terraform-state"
+    bucket = "varshard"
     prefix = "terraform"
     credentials = "account.json"
   }
