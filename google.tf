@@ -1,13 +1,3 @@
-variable "project" {
-  type = "string"
-  description = "Google Cloud project name"
-}
-
-variable "region" {
-  type = "string"
-  description = "Default Google Cloud region"
-}
-
 terraform {
   backend "gcs" {
     bucket = "varshard"
@@ -22,3 +12,4 @@ provider "google" {
   region      = "${var.region}"
 }
 
+data "google_client_config" "current" {}

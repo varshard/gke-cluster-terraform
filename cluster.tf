@@ -1,23 +1,12 @@
-variable "general_purpose_machine_type" {
-  type = "string"
-  description = "Machine type to use for the general-purpose node pool. See https://cloud.google.com/compute/docs/machine-types"
-}
 
-variable "general_purpose_min_node_count" {
-  type = "string"
-  description = "The minimum number of nodes PER ZONE in the general-purpose node pool"
-  default = 1
-}
-
-variable "general_purpose_max_node_count" {
-  type = "string"
-  description = "The maximum number of nodes PER ZONE in the general-purpose node pool"
-  default = 5
+data "google_container_cluster" "cluster" {
+  name     = "${var.project}-cluster"
+  location = "${var.region}"
 }
 
 resource "google_container_cluster" "cluster" {
-  name     = "${var.project}-cluster"
-  location = "${var.region}"
+  name     = "${data.google_container_cluster.cluster.name}"
+  location = "${data.google_container_cluster.cluster.location}"
 
   # We can't create a cluster with no node pool defined, but we want to only use
   # separately managed node pools. So we create the smallest possible default
@@ -48,12 +37,12 @@ resource "google_container_node_pool" "general_purpose" {
   location   = "${var.region}"
   cluster    = "${google_container_cluster.cluster.name}"
 
-  management { 
+  management {
     auto_repair = "true"
     auto_upgrade = "true"
   }
 
-  autoscaling { 
+  autoscaling {
     min_node_count = "${var.general_purpose_min_node_count}"
     max_node_count = "${var.general_purpose_max_node_count}"
   }
@@ -66,7 +55,7 @@ resource "google_container_node_pool" "general_purpose" {
       disable-legacy-endpoints = "true"
     }
 
-    # Needed for correctly functioning cluster, see 
+    # Needed for correctly functioning cluster, see
     # https://www.terraform.io/docs/providers/google/r/container_cluster.html#oauth_scopes
     oauth_scopes = [
       "https://www.googleapis.com/auth/logging.write",
@@ -74,18 +63,4 @@ resource "google_container_node_pool" "general_purpose" {
       "https://www.googleapis.com/auth/devstorage.read_only"
     ]
   }
-}
-
-# The following outputs allow authentication and connectivity to the GKE Cluster
-# by using certificate-based authentication.
-output "client_certificate" {
-  value = "${google_container_cluster.cluster.master_auth.0.client_certificate}"
-}
-
-output "client_key" {
-  value = "${google_container_cluster.cluster.master_auth.0.client_key}"
-}
-
-output "cluster_ca_certificate" {
-  value = "${google_container_cluster.cluster.master_auth.0.cluster_ca_certificate}"
 }
