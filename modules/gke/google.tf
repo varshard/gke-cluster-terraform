@@ -7,7 +7,8 @@ terraform {
 }
 
 provider "google" {
-  credentials = var.credentials
+//  Set path to credential at GOOGLE_CLOUD_KEYFILE_JSON or
+//  credentials = var.credentials
   project     = var.project
   region      = var.region
 }
