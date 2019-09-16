@@ -25,12 +25,7 @@ variable "region" {
   description = "Default Google Cloud region"
 }
 
-variable "image" {
+variable "credentials" {
   type = string
-  description = "image tag"
-}
-
-variable "gce_credential_path" {
-  type = string
-  description = "path to GCE service account"
+  description = "GCE service account credential JSON"
 }
