@@ -1,13 +1,3 @@
-variable "ping" {
-  type = string
-  default = "gin-3000"
-}
-
-variable "pong" {
-  type = string
-  default = "gin-3001"
-}
-
 module "gke" {
   source = "./modules/gke"
 
@@ -26,101 +16,144 @@ provider "kubernetes" {
   token = module.gke.access_token
 }
 
-resource "kubernetes_deployment" "ping" {
+resource "kubernetes_config_map" "pg_master_config" {
   metadata {
-    name = var.ping
+    name = "pg-master-conf"
+  }
+
+  data = {
+    POSTGRES_USER = "title"
+    POSTGRES_PASSWORD = "password"
+    POSTGRES_DB = "guessbook"
+    PG_REP_USER = "rep"
+    PG_REP_PASSWORD = "password"
+  }
+}
+
+resource "kubernetes_config_map" "pg_slave_config" {
+  metadata {
+    name = "pg-slave-conf"
+  }
+
+  data = {
+    POSTGRES_USER = "title"
+    POSTGRES_PASSWORD = "password"
+    POSTGRES_DB = "guessbook"
+    PG_REP_USER = "rep"
+    PG_REP_PASSWORD = "password"
+    // GCE is using IP-based load balancer
+    PG_MASTER_HOST = kubernetes_service.pg_master_svc.load_balancer_ingress[0].ip
+    // For AWS, which use hostname-based load balancer
+    //PG_MASTER_HOST = kubernetes_service.pg_master_svc.load_balancer_ingress[0].hostname
+
+    PG_MASTER_PORT = "5432"
+  }
+}
+
+resource "kubernetes_deployment" "pg_master" {
+  metadata {
+    name = "pg-master"
     labels = {
-      app = var.ping
+      app = "pg-master"
     }
   }
 
   spec {
-    replicas = 3
+    replicas = 1
     selector {
       match_labels = {
-        app = var.ping
+        app = "pg-master"
       }
     }
     template {
       metadata {
-        name = var.ping
+        name = "pg-master"
         labels = {
-          app = var.ping
+          app = "pg-master"
         }
       }
       spec {
         container {
-          image = "gcr.io/${var.project}/golang-gin:v2-3000"
-          name = var.ping
+          image = "gcr.io/${var.project}/pg-master:11.5-alpine"
+          name = "pg-master"
+          env_from {
+            config_map_ref {
+              name = kubernetes_config_map.pg_master_config.metadata[0].name
+            }
+          }
         }
       }
     }
   }
 }
 
-resource "kubernetes_service" "ping_service" {
+resource "kubernetes_service" "pg_master_svc" {
   metadata {
-    name = var.ping
+    name = "pg-master"
   }
 
   spec {
     selector = {
-      app = var.ping
+      app = "pg-master"
     }
     port {
-      port = 3000
+      port = 5432
     }
 
     type = "LoadBalancer"
   }
 }
 
-resource "kubernetes_deployment" "pong" {
+resource "kubernetes_deployment" "pg_slave" {
   metadata {
-    name = var.pong
+    name = "pg-slave"
     labels = {
-      app = var.pong
+      app = "pg-slave"
     }
   }
 
   spec {
-    replicas = 3
+    replicas = 2
     selector {
       match_labels = {
-        app = var.pong
+        app = "pg-slave"
       }
     }
     template {
       metadata {
-        name = var.pong
+        name = "pg-slave"
         labels = {
-          app = var.pong
+          app = "pg-slave"
         }
       }
       spec {
         container {
-          image = "gcr.io/${var.project}/golang-gin:v2-3001"
-          name = var.pong
+          image = "gcr.io/${var.project}/pg-slave:11.5-alpine"
+          name = "pg-slave"
+          env_from {
+            config_map_ref {
+              name = kubernetes_config_map.pg_slave_config.metadata[0].name
+            }
+          }
         }
       }
     }
   }
 }
 
-resource "kubernetes_service" "pong_service" {
+resource "kubernetes_service" "pg_slave_svc" {
   metadata {
-    name = "pingpong-3001"
+    name = "pg-slave"
   }
 
   spec {
     selector = {
-      app = var.pong
+      app = "pg-slave"
     }
     port {
-      port = 3001
+      port = 5432
     }
 
     type = "LoadBalancer"
   }
 }
-
