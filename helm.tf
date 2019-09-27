@@ -30,11 +30,11 @@ provider "helm" {
   install_tiller = "true"
   service_account = kubernetes_service_account.tiller_service_account.metadata.0.name
   kubernetes {
-    # host = "https://${module.gke.cluster_endpoint}"
-    # cluster_ca_certificate = base64decode(module.gke.cluster_ca_certificate)
-    # token = module.gke.access_token
-    config_context = "tiller"
-    # config_context = kubernetes_service_account.tiller_service_account.metadata.0.name
+    host = "https://${module.gke.cluster_endpoint}"
+    cluster_ca_certificate = base64decode(module.gke.cluster_ca_certificate)
+    token = module.gke.access_token
+
+    config_context = kubernetes_service_account.tiller_service_account.metadata.0.name
   }
 }
 
@@ -61,10 +61,5 @@ resource "helm_release" "example" {
   set {
     name  = "metrics.enabled"
     value = "true"
-  }
-
-  set_string {
-    name  = "service.annotations.prometheus\\.io/port"
-    value = "9127"
   }
 }
